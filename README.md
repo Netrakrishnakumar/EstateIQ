@@ -1,4 +1,4 @@
-# Estate IQ - Smart House Price Prediction
+# EstateIQ - Smart House Price Prediction
 
 A modern web application that leverages IBM Watson Studio AutoAI to provide accurate house price predictions. Built with Python Flask for the backend and Bootstrap 5 for a responsive, professional frontend.
 
