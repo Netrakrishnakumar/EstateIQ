@@ -23,10 +23,7 @@ class IBMCloudClient:
         self.space_id = space_id
         self.region = region
 
-        # IAM token will be generated when required
         self.iam_token = None
-
-        # Correct IBM IAM endpoint
         self.iam_url = "https://iam.cloud.ibm.com/identity/token"
 
     def generate_iam_token(self) -> Optional[str]:
@@ -52,6 +49,9 @@ class IBMCloudClient:
                 timeout=30
             )
 
+            print("IAM Status Code:", response.status_code)
+            print("IAM Response:", response.text)
+
             response.raise_for_status()
 
             token = response.json()
@@ -63,6 +63,10 @@ class IBMCloudClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to generate IAM token: {e}")
+
+            if e.response is not None:
+                logger.error(e.response.text)
+
             return None
 
     def predict(self, input_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -72,6 +76,7 @@ class IBMCloudClient:
             self.iam_token = self.generate_iam_token()
 
         if not self.iam_token:
+            logger.error("IAM token generation failed.")
             return None
 
         headers = {
@@ -89,8 +94,12 @@ class IBMCloudClient:
             ]
         }
 
+        print("\n========== REQUEST PAYLOAD ==========")
+        print(payload)
+        print("=====================================\n")
+
         try:
-            logger.info("Calling deployment endpoint...")
+            logger.info("Calling IBM deployment endpoint...")
 
             response = requests.post(
                 self.deployment_url,
@@ -98,6 +107,12 @@ class IBMCloudClient:
                 json=payload,
                 timeout=60
             )
+
+            print("\n========== IBM RESPONSE ==========")
+            print("Status Code:", response.status_code)
+            print("Response Text:")
+            print(response.text)
+            print("==================================\n")
 
             response.raise_for_status()
 
@@ -107,6 +122,7 @@ class IBMCloudClient:
             logger.error(f"Prediction failed: {e}")
 
             if e.response is not None:
+                logger.error("IBM Error Response:")
                 logger.error(e.response.text)
 
             return None
@@ -115,9 +131,16 @@ class IBMCloudClient:
         """Extract prediction value"""
 
         try:
-            return float(
+            prediction = float(
                 prediction_result["predictions"][0]["values"][0][0]
             )
+
+            logger.info(f"Prediction extracted: {prediction}")
+
+            return prediction
+
         except Exception as e:
             logger.error(f"Error extracting prediction: {e}")
+            logger.error(f"Full prediction response: {prediction_result}")
+
             return None
